@@ -6,9 +6,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-	  <Compile Include="PicoPinnedArray.cs" />
-	  <Compile Include="PicoStatus.cs" />
-	  <Compile Include="PS2000AImports.cs" />
+	  <Compile Include="..\PicoPinnedArray.cs" />
+	  <Compile Include="..\PicoStatus.cs" />
+	  <Compile Include="..\PS2000AImports.cs" />
   </ItemGroup>
 
 </Project>
