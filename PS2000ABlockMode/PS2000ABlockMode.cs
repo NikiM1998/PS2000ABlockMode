@@ -124,7 +124,7 @@ namespace PS2000AExample
 
             PS2000ABlockMode blockCapture = new PS2000ABlockMode(handle);
             blockCapture.ChannelSetup();
-            blockCapture.BlockDataHandler("First 10 readings", 0);
+            blockCapture.BlockDataHandler("Recorded Data:", 0);
             Imports.CloseUnit(handle);
         }
 
@@ -158,20 +158,19 @@ namespace PS2000AExample
         }
 
         /****************************************************************************
-		 * BlockDataHandler
-		 * - acquires data 
-		 * * Input :
-		 * - unit : the unit to use.
-		 * - text : the text to display before the display of data slice
-		 * - offset : the offset into the data buffer to start the display's slice.
-		 ****************************************************************************/
+         * BlockDataHandler
+         * - acquires data 
+         * * Input :
+         * - unit : the unit to use.
+         * - text : the text to display before the display of data slice
+         * - offset : the offset into the data buffer to start the display's slice.
+         ****************************************************************************/
         private void BlockDataHandler(string text, int offset)
         {
-            //Setup databuffers
+            // Setup databuffers
             uint status;
             PinnedArray<short>[] minPinned = new PinnedArray<short>[channelCount];
             PinnedArray<short>[] maxPinned = new PinnedArray<short>[channelCount];
-
 
             for (int i = 0; i < channelCount; i++)
             {
@@ -180,14 +179,12 @@ namespace PS2000AExample
                 minPinned[i] = new PinnedArray<short>(minBuffers);
                 maxPinned[i] = new PinnedArray<short>(maxBuffers);
 
-
                 status = Imports.SetDataBuffers(_handle, (Imports.Channel)i, maxBuffers, minBuffers, (int)sampleCount, 0, Imports.RatioMode.None);
                 if (status != StatusCodes.PICO_OK)
                 {
                     Console.WriteLine("BlockDataHandler:ps2000aSetDataBuffer Channel {0} Status = 0x{1:X6}", (char)('A' + i), status);
                 }
             }
-
 
             /* Find the time interval (in nanoseconds) at the current _timebase. */
             /* Use downsampling as opposed to oversampling if required. */
@@ -198,16 +195,14 @@ namespace PS2000AExample
             {
                 Console.WriteLine("Selected timebase {0} could not be used.\n", _timebase);
                 _timebase++;
-
             }
             Console.WriteLine("Timebase: {0}\t Sampling Interval (ns): {1}\n", _timebase, timeInterval);
-
 
             int timeIndisposed;
             Console.WriteLine("Collecting Device Data...\n");
             Console.WriteLine("Starting Block Capture");
 
-            /* Start it collecting, then wait for completion*/
+            /* Start it collecting, then wait for completion */
             _ready = false;
             _callbackDelegate = BlockCallback;
             status = Imports.RunBlock(_handle, 0, (int)sampleCount, _timebase, _oversample, out timeIndisposed, 0, _callbackDelegate, IntPtr.Zero);
@@ -225,31 +220,40 @@ namespace PS2000AExample
                 Console.WriteLine(text);
                 Console.WriteLine("readings will be in {0}", (_scaleVoltages) ? ("mV") : ("ADC Counts"));
 
-                for (int ch = 0; ch < channelCount; ch++)
+                using (StreamWriter writer = new StreamWriter("data.txt"))
                 {
-                    if (_channelSettings[ch].enabled)
-                    {
-                        Console.Write("   Ch{0}    ", (char)('A' + ch));
-                    }
-                }
-                Console.WriteLine();
+                    writer.WriteLine(text);
+                    writer.WriteLine("readings will be in {0}", (_scaleVoltages) ? ("mV") : ("ADC Counts"));
 
-                for (int i = offset; i < offset + 10; i++) //show data starting from  offset to 10, to print all values use samplecount
-                {
                     for (int ch = 0; ch < channelCount; ch++)
                     {
                         if (_channelSettings[ch].enabled)
                         {
-                            Console.Write("{0,6}    ", _scaleVoltages ?
-                                              adc_to_mv(maxPinned[ch].Target[i], (int)_channelSettings[(int)(Imports.Channel.ChannelA + ch)].range)  // If _scaleVoltages, show mV values
-                                              : maxPinned[ch].Target[i]);                                                                           // else show ADC counts
+                            Console.Write("   Ch{0}    ", (char)('A' + ch));
+                            writer.Write("   Ch{0}    ", (char)('A' + ch));
                         }
                     }
-
                     Console.WriteLine();
+                    writer.WriteLine();
 
+                    for (int i = offset; i < sampleCount; i++) // show data starting from offset to sampleCount
+                    {
+                        for (int ch = 0; ch < channelCount; ch++)
+                        {
+                            if (_channelSettings[ch].enabled)
+                            {
+                                string value = _scaleVoltages ?
+                                    adc_to_mv(maxPinned[ch].Target[i], (int)_channelSettings[(int)(Imports.Channel.ChannelA + ch)].range).ToString()  // If _scaleVoltages, show mV values
+                                    : maxPinned[ch].Target[i].ToString();                                                                           // else show ADC counts
+
+                                Console.Write("{0,6}    ", value);
+                                writer.Write("{0,6}    ", value);
+                            }
+                        }
+                        Console.WriteLine();
+                        writer.WriteLine();
+                    }
                 }
-
             }
             foreach (PinnedArray<short> p in minPinned)
             {
